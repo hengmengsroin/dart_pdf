@@ -102,10 +102,7 @@ void main() {
     pdf.addPage(
       pw.Page(
         build: (context) {
-          return pw.SizedBox(
-            width: 200,
-            child: widget,
-          );
+          return pw.SizedBox(width: 200, child: widget);
         },
       ),
     );

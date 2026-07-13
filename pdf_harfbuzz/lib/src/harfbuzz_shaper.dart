@@ -31,7 +31,10 @@ class HarfBuzzShaper {
 
   ShapedRun shape(String text, ByteData fontData) {
     final cached = _fontCache.putIfAbsent(fontData, () {
-      final bytes = fontData.buffer.asUint8List(fontData.offsetInBytes, fontData.lengthInBytes);
+      final bytes = fontData.buffer.asUint8List(
+        fontData.offsetInBytes,
+        fontData.lengthInBytes,
+      );
       final pointer = malloc<ffi.Char>(bytes.length);
       final byteData = pointer.cast<ffi.Uint8>().asTypedList(bytes.length);
       byteData.setAll(0, bytes);
@@ -98,14 +101,16 @@ class HarfBuzzShaper {
         utf16Cluster = text.length;
       }
 
-      glyphs.add(ShapedGlyph(
-        glyphId: info.codepoint,
-        cluster: utf16Cluster,
-        xAdvance: pos.xAdvance.toDouble(),
-        yAdvance: pos.yAdvance.toDouble(),
-        xOffset: pos.xOffset.toDouble(),
-        yOffset: pos.yOffset.toDouble(),
-      ));
+      glyphs.add(
+        ShapedGlyph(
+          glyphId: info.codepoint,
+          cluster: utf16Cluster,
+          xAdvance: pos.xAdvance.toDouble(),
+          yAdvance: pos.yAdvance.toDouble(),
+          xOffset: pos.xOffset.toDouble(),
+          yOffset: pos.yOffset.toDouble(),
+        ),
+      );
     }
 
     malloc.free(textPtr);
