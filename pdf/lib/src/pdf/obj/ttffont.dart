@@ -35,6 +35,7 @@ import 'font_descriptor.dart';
 import 'object.dart';
 import 'object_stream.dart';
 import 'unicode_cmap.dart';
+import '../font/shaped_text.dart';
 
 class PdfTtfFont extends PdfFont {
   /// Constructs a [PdfTtfFont]
@@ -45,6 +46,28 @@ class PdfTtfFont extends PdfFont {
     unicodeCMap = PdfUnicodeCmap(pdfDocument, protect);
     descriptor = PdfFontDescriptor(this, file);
     widthsObject = PdfObject<PdfArray>(pdfDocument, params: PdfArray());
+  }
+
+  /// List of shaped glyphs (original glyph IDs) to include in the font subset
+  final shapedGlyphs = <int>[];
+
+  /// Mapping from shapedGlyphs index to its unicode cluster string
+  final shapedGlyphsToUnicode = <int, String>{};
+
+  /// Register a shaped glyph ID with its unicode cluster string
+  int registerShapedGlyph(int glyphId, String unicodeCluster) {
+    var idx = shapedGlyphs.indexOf(glyphId);
+    if (idx == -1) {
+      idx = shapedGlyphs.length;
+      shapedGlyphs.add(glyphId);
+      shapedGlyphsToUnicode[idx] = unicodeCluster;
+    }
+    return idx;
+  }
+
+  /// Return font metrics for a specific glyph ID
+  PdfFontMetrics glyphMetricsByGlyphId(int glyphId) {
+    return font.glyphInfoMap[glyphId] ?? PdfFontMetrics.zero;
   }
 
   @override
@@ -119,7 +142,7 @@ class PdfTtfFont extends PdfFont {
     int charMax;
 
     final ttfWriter = TtfWriter(font);
-    final data = ttfWriter.withChars(unicodeCMap.cmap);
+    final data = ttfWriter.withChars(unicodeCMap.cmap, glyphIds: shapedGlyphs);
     file.buf.putBytes(data);
     file.params['/Length1'] = PdfNum(data.length);
 
@@ -153,6 +176,12 @@ class PdfTtfFont extends PdfFont {
         ),
       );
     }
+
+    for (final glyphId in shapedGlyphs) {
+      widthsObject.params.add(
+        PdfNum((glyphMetricsByGlyphId(glyphId).advanceWidth * 1000.0).toInt()),
+      );
+    }
   }
 
   @override
@@ -164,6 +193,41 @@ class PdfTtfFont extends PdfFont {
     } else {
       _buildTrueType(params);
     }
+  }
+
+  /// Output a sequence of shaped glyphs directly to the PDF stream using their glyph IDs.
+  void putGlyphs(
+    PdfStream stream,
+    List<ShapedGlyph> glyphs,
+    String originalText,
+  ) {
+    if (!font.unicode) {
+      throw Exception(
+        'HarfBuzz text shaping is only supported for Unicode/TrueType fonts.',
+      );
+    }
+
+    stream.putByte(0x3c);
+    for (final glyph in glyphs) {
+      var clusterText = '';
+      if (glyph.cluster >= 0 && glyph.cluster < originalText.length) {
+        var nextCluster = originalText.length;
+        for (final other in glyphs) {
+          if (other.cluster > glyph.cluster && other.cluster < nextCluster) {
+            nextCluster = other.cluster;
+          }
+        }
+        clusterText = originalText.substring(glyph.cluster, nextCluster);
+      }
+
+      final cidIndex = registerShapedGlyph(glyph.glyphId, clusterText);
+      final cid = unicodeCMap.cmap.length + cidIndex;
+
+      unicodeCMap.customCidToUnicode[cid] = clusterText;
+
+      stream.putBytes(latin1.encode(cid.toRadixString(16).padLeft(4, '0')));
+    }
+    stream.putByte(0x3e);
   }
 
   @override

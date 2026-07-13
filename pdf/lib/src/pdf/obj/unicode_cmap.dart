@@ -25,6 +25,9 @@ class PdfUnicodeCmap extends PdfObjectStream {
   /// List of characters
   final cmap = <int>[0];
 
+  /// Mapping from custom CIDs to unicode cluster strings
+  final customCidToUnicode = <int, String>{};
+
   /// Protects the text from being "seen" by the PDF reader.
   final bool protect;
 
@@ -33,6 +36,8 @@ class PdfUnicodeCmap extends PdfObjectStream {
     if (protect) {
       cmap.fillRange(1, cmap.length, 0x20);
     }
+
+    final totalEntries = cmap.length + customCidToUnicode.length;
 
     buf.putString(
       '/CIDInit/ProcSet\nfindresource begin\n'
@@ -48,7 +53,7 @@ class PdfUnicodeCmap extends PdfObjectStream {
       '1 begincodespacerange\n'
       '<0000> <FFFF>\n'
       'endcodespacerange\n'
-      '${cmap.length} beginbfchar\n',
+      '$totalEntries beginbfchar\n',
     );
 
     for (var key = 0; key < cmap.length; key++) {
@@ -57,6 +62,15 @@ class PdfUnicodeCmap extends PdfObjectStream {
         '<${key.toRadixString(16).toUpperCase().padLeft(4, '0')}> <${value.toRadixString(16).toUpperCase().padLeft(4, '0')}>\n',
       );
     }
+
+    customCidToUnicode.forEach((cid, unicodeStr) {
+      final hexStr = unicodeStr.runes
+          .map((r) => r.toRadixString(16).toUpperCase().padLeft(4, '0'))
+          .join();
+      buf.putString(
+        '<${cid.toRadixString(16).toUpperCase().padLeft(4, '0')}> <$hexStr>\n',
+      );
+    });
 
     buf.putString(
       'endbfchar\n'

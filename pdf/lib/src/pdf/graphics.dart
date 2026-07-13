@@ -28,6 +28,7 @@ import 'format/num.dart';
 import 'format/stream.dart';
 import 'graphic_state.dart';
 import 'obj/font.dart';
+import 'obj/ttffont.dart';
 import 'obj/formxobject.dart';
 import 'obj/graphic_stream.dart';
 import 'obj/image.dart';
@@ -35,6 +36,7 @@ import 'obj/page.dart';
 import 'obj/pattern.dart';
 import 'obj/shading.dart';
 import 'rect.dart';
+import 'font/shaped_text.dart';
 
 /// Shape to be used at the corners of paths that are stroked
 enum PdfLineJoin {
@@ -621,6 +623,111 @@ class PdfGraphics {
       if (_page.settings.verbose) {
         _buf.putString(' ' * math.max(0, _commentIndent - _buf.offset + o));
         _buf.putComment('drawString("$s")');
+        o = _buf.offset;
+        _indent -= _indentAmount;
+        _buf.putString(' ' * (_indent));
+      }
+      return true;
+    }());
+
+    _buf.putString('ET ');
+
+    assert(() {
+      if (_page.settings.verbose) {
+        _buf.putString(' ' * (_commentIndent - 3 - _indent));
+        _buf.putComment('endText()');
+      }
+      return true;
+    }());
+
+    _page.altered = true;
+  }
+
+  /// Draw shaped glyphs using glyph IDs and positioning offsets.
+  void drawShapedGlyphs(
+    PdfFont font,
+    double size,
+    List<ShapedGlyph> glyphs,
+    String originalText,
+    double x,
+    double y, {
+    PdfTextRenderingMode mode = PdfTextRenderingMode.fill,
+  }) {
+    if (glyphs.isEmpty) {
+      return;
+    }
+
+    assert(() {
+      if (_page.settings.verbose) {
+        _buf.putString(' ' * (_indent));
+      }
+      return true;
+    }());
+
+    _buf.putString('BT ');
+
+    assert(() {
+      if (_page.settings.verbose) {
+        _buf.putString(' ' * (_commentIndent - 3 - _indent));
+        _buf.putComment('beginText()');
+        _indent += _indentAmount;
+      }
+      return true;
+    }());
+
+    setFont(font, size, mode: mode);
+
+    var o = 0;
+    assert(() {
+      if (_page.settings.verbose) {
+        o = _buf.offset;
+        _buf.putString(' ' * (_indent));
+      }
+      return true;
+    }());
+
+    PdfNumList([x, y]).output(_page, _buf);
+    _buf.putString(' Td ');
+
+    assert(() {
+      if (_page.settings.verbose) {
+        _buf.putString(' ' * math.max(0, _commentIndent - _buf.offset + o));
+        _buf.putComment('moveCursor($x, $y)');
+        o = _buf.offset;
+        _buf.putString(' ' * (_indent));
+      }
+      return true;
+    }());
+
+    final scale = size / font.unitsPerEm;
+
+    for (final glyph in glyphs) {
+      final tx = glyph.xOffset * scale;
+      final ty = glyph.yOffset * scale;
+
+      if (tx != 0 || ty != 0) {
+        PdfNumList([tx, ty]).output(_page, _buf);
+        _buf.putString(' Td ');
+      }
+
+      if (font is PdfTtfFont) {
+        font.putGlyphs(_buf, [glyph], originalText);
+      } else {
+        font.putText(_buf, String.fromCharCode(glyph.glyphId));
+      }
+      _buf.putString(' Tj ');
+
+      final nextTx = (glyph.xAdvance - glyph.xOffset) * scale;
+      final nextTy = (glyph.yAdvance - glyph.yOffset) * scale;
+
+      if (nextTx != 0 || nextTy != 0) {
+        PdfNumList([nextTx, nextTy]).output(_page, _buf);
+        _buf.putString(' Td ');
+      }
+    }
+
+    assert(() {
+      if (_page.settings.verbose) {
         o = _buf.offset;
         _indent -= _indentAmount;
         _buf.putString(' ' * (_indent));

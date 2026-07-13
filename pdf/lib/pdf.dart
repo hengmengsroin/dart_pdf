@@ -46,6 +46,7 @@ export 'src/pdf/obj/shading.dart';
 export 'src/pdf/obj/signature.dart';
 export 'src/pdf/obj/smask.dart';
 export 'src/pdf/obj/ttffont.dart';
+export 'src/pdf/font/shaped_text.dart';
 export 'src/pdf/page_format.dart';
 export 'src/pdf/point.dart';
 export 'src/pdf/raster.dart';

@@ -10,6 +10,7 @@ import 'examples/document.dart';
 import 'examples/invoice.dart';
 import 'examples/report.dart';
 import 'examples/resume.dart';
+import 'examples/khmer.dart';
 
 const examples = <Example>[
   Example('RÉSUMÉ', 'resume.dart', generateResume),
@@ -18,10 +19,11 @@ const examples = <Example>[
   Example('REPORT', 'report.dart', generateReport),
   Example('CALENDAR', 'calendar.dart', generateCalendar),
   Example('CERTIFICATE', 'certificate.dart', generateCertificate, true),
+  Example('KHMER SHAPING', 'khmer.dart', generateKhmer),
 ];
 
-typedef LayoutCallbackWithData =
-    Future<Uint8List> Function(PdfPageFormat pageFormat, CustomData data);
+typedef LayoutCallbackWithData = Future<Uint8List> Function(
+    PdfPageFormat pageFormat, CustomData data);
 
 class Example {
   const Example(this.name, this.file, this.builder, [this.needsData = false]);

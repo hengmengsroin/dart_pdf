@@ -1,0 +1,16 @@
+name: pdf_harfbuzz
+description: A companion package for dart_pdf that provides HarfBuzz text shaping for complex scripts.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ">=3.11.0 <4.0.0"
+
+dependencies:
+  pdf:
+    path: ../pdf
+  ffi: ^2.2.0
+  meta: ">=1.3.0 <2.0.0"
+
+dev_dependencies:
+  test: ">=1.16.0 <2.0.0"

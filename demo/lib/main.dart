@@ -16,9 +16,18 @@
 
 import 'package:flutter/material.dart';
 
+import 'package:pdf/widgets.dart' as pw;
+import 'package:pdf_harfbuzz/pdf_harfbuzz.dart';
 import 'app.dart';
 
 void main() {
+  try {
+    final shaper = HarfBuzzShaper();
+    pw.HarfBuzzText.defaultShaper = shaper.shape;
+    print('HarfBuzz text shaper successfully initialized.');
+  } catch (e) {
+    print('Failed to initialize HarfBuzz text shaper: $e');
+  }
   runApp(const App());
 }
 

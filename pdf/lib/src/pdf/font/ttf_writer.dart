@@ -80,7 +80,7 @@ class TtfWriter {
   }
 
   /// Write this list of glyphs
-  Uint8List withChars(List<int> chars) {
+  Uint8List withChars(List<int> chars, {List<int>? glyphIds}) {
     final tables = <String, Uint8List>{};
     final tablesLength = <String, int>{};
 
@@ -111,7 +111,7 @@ class TtfWriter {
         continue;
       }
 
-      void addGlyph(glyphIndex) {
+      void addGlyph(int glyphIndex) {
         final glyph = ttf.readGlyph(glyphIndex).copy();
         for (final g in glyph.compounds) {
           compounds[g] = -1;
@@ -151,8 +151,29 @@ class TtfWriter {
         glyphsMap.remove(glyphsIndex);
       }
     }
-
     glyphsInfo.addAll(glyphsMap.values);
+
+    if (glyphIds != null) {
+      for (final glyphId in glyphIds) {
+        final glyph = ttf.readGlyph(glyphId).copy();
+        glyphsInfo.add(glyph);
+      }
+      void registerCompounds(int idx) {
+        final glyph = ttf.readGlyph(idx);
+        for (final g in glyph.compounds) {
+          compounds[g] = -1;
+          overflow.add(g);
+          if (!glyphsInfo.any((gly) => gly.index == g)) {
+            final compGlyph = ttf.readGlyph(g).copy();
+            glyphsInfo.add(compGlyph);
+          }
+          registerCompounds(g);
+        }
+      }
+      for (final glyphId in glyphIds) {
+        registerCompounds(glyphId);
+      }
+    }
 
     // Add compound glyphs
     for (final compound in compounds.keys) {
@@ -304,7 +325,8 @@ class TtfWriter {
       cmapData.setUint32(20, 1); // Table language
       cmapData.setUint32(24, 1); // numGroups
       cmapData.setUint32(28, 32); // startCharCode
-      cmapData.setUint32(32, chars.length + 31); // endCharCode
+      final totalLength = chars.length + (glyphIds?.length ?? 0);
+      cmapData.setUint32(32, totalLength + 31); // endCharCode
       cmapData.setUint32(36, 0); // startGlyphID
 
       tables[TtfParser.cmap_table] = cmap;
