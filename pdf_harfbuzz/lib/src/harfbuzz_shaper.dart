@@ -48,7 +48,8 @@ class HarfBuzzShaper {
       final font = bindings.hb_font_create(face);
 
       // Keep coordinates in design units
-      bindings.hb_font_set_scale(font, 0, 0);
+      final upem = bindings.hb_face_get_upem(face);
+      bindings.hb_font_set_scale(font, upem, upem);
 
       return _CachedFont(blob, face, font, pointer);
     });

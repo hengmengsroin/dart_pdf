@@ -74,10 +74,33 @@ Future<Uint8List> generateKhmer(
                 fontSize: 24,
               ),
               pw.SizedBox(height: 10),
+              pw.SizedBox(
+                width: 300,
+                child: pw.HarfBuzzText(
+                  'ភាសាខ្មែរគឺជាភាសាផ្លូវការនៃប្រទេសកម្ពុជា។ ភាសានេះមានប្រវត្តិយូរលង់ណាស់មកហើយ និងមានអក្សរក្រមវែងជាងគេលើលោក។',
+                  font: font,
+                  fontSize: 18,
+                ),
+              ),
               pw.HarfBuzzText(
                 'ភាសាខ្មែរគឺជាភាសាផ្លូវការនៃប្រទេសកម្ពុជា',
                 font: font,
                 fontSize: 24,
+              ),
+              pw.SizedBox(height: 30),
+              pw.Text(
+                '3. pw.HarfBuzzText with Line Wrapping (Constrained to 300 width):',
+                style:
+                    pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16),
+              ),
+              pw.SizedBox(height: 10),
+              pw.SizedBox(
+                width: 300,
+                child: pw.HarfBuzzText(
+                  'ភាសាខ្មែរគឺជាភាសាផ្លូវការនៃប្រទេសកម្ពុជា។ ភាសានេះមានប្រវត្តិយូរលង់ណាស់មកហើយ និងមានអក្សរក្រមវែងជាងគេលើលោក។',
+                  font: font,
+                  fontSize: 18,
+                ),
               ),
             ],
           ),

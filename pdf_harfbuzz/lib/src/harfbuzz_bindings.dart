@@ -78,6 +78,10 @@ class HarfBuzzBindings {
         ffi.Void Function(ffi.Pointer<ffi.Opaque>),
         void Function(ffi.Pointer<ffi.Opaque>)>('hb_face_destroy');
 
+    hb_face_get_upem = dylib.lookupFunction<
+        ffi.Uint32 Function(ffi.Pointer<ffi.Opaque>),
+        int Function(ffi.Pointer<ffi.Opaque>)>('hb_face_get_upem');
+
     hb_font_create = dylib.lookupFunction<
         ffi.Pointer<ffi.Opaque> Function(ffi.Pointer<ffi.Opaque>),
         ffi.Pointer<ffi.Opaque> Function(ffi.Pointer<ffi.Opaque>)>('hb_font_create');
@@ -147,6 +151,8 @@ class HarfBuzzBindings {
       ffi.Pointer<ffi.Opaque> blob, int index) hb_face_create;
 
   late final void Function(ffi.Pointer<ffi.Opaque> face) hb_face_destroy;
+
+  late final int Function(ffi.Pointer<ffi.Opaque> face) hb_face_get_upem;
 
   late final ffi.Pointer<ffi.Opaque> Function(ffi.Pointer<ffi.Opaque> face)
       hb_font_create;

@@ -72,4 +72,51 @@ void main() {
 
     shaper.dispose();
   });
+
+  test('HarfBuzzText line wrapping test', () async {
+    final shaper = HarfBuzzShaper();
+
+    final client = HttpClient();
+    final url = Uri.parse(
+      'https://raw.githubusercontent.com/notofonts/noto-fonts/main/hinted/ttf/NotoSansKhmer/NotoSansKhmer-Regular.ttf',
+    );
+    final request = await client.getUrl(url);
+    final response = await request.close();
+    final fontBytes = await response.fold<BytesBuilder>(
+      BytesBuilder(),
+      (b, d) => b..add(d),
+    );
+    final fontData = fontBytes.takeBytes().buffer.asByteData();
+    client.close();
+
+    pw.HarfBuzzText.defaultShaper = shaper.shape;
+    final font = pw.Font.ttf(fontData);
+
+    final widget = pw.HarfBuzzText(
+      "ភាសាខ្មែរគឺជាភាសាផ្លូវការនៃប្រទេសកម្ពុជា",
+      font: font,
+      fontSize: 24,
+    );
+
+    final pdf = pw.Document();
+    pdf.addPage(
+      pw.Page(
+        build: (context) {
+          return pw.SizedBox(
+            width: 200,
+            child: widget,
+          );
+        },
+      ),
+    );
+
+    final pdfBytes = await pdf.save();
+    final file = File('khmer_wrap_test.pdf');
+    await file.writeAsBytes(pdfBytes);
+    print('Wrap PDF saved to: ${file.absolute.path}');
+
+    expect(await file.exists(), isTrue);
+
+    shaper.dispose();
+  });
 }

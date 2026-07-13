@@ -36,7 +36,16 @@ class HarfBuzzText extends Widget {
 
   static TextShaper? defaultShaper;
 
-  List<ShapedGlyph>? _shapedGlyphs;
+  List<_PositionedLine>? _positionedLines;
+
+  bool _isBreakOpportunity(String char) {
+    return char == ' ' ||
+        char == '\t' ||
+        char == '\n' ||
+        char == '\r' ||
+        char == '\u200b' ||
+        char == '\u200c';
+  }
 
   @override
   void layout(
@@ -57,26 +66,114 @@ class HarfBuzzText extends Widget {
     }
 
     final ttfFont = font as TtfFont;
-    final run = activeShaper(text, ttfFont.data);
-    _shapedGlyphs = run.glyphs;
+    final pdfFont = font.getFont(context);
+    final fontScale = fontSize / pdfFont.unitsPerEm;
+    final lineHeight = (pdfFont.ascent - pdfFont.descent) * fontSize;
 
-    // Calculate width by summing glyph advances (in font units)
-    var totalAdvance = 0.0;
-    for (final glyph in run.glyphs) {
-      totalAdvance += glyph.xAdvance;
+    final paragraphs = text.split('\n');
+    _positionedLines = [];
+
+    double maxLineWidth = 0.0;
+    double totalHeight = 0.0;
+
+    for (final paragraph in paragraphs) {
+      if (paragraph.isEmpty) {
+        _positionedLines!.add(_PositionedLine(
+          glyphs: [],
+          yOffset: totalHeight,
+          originalText: paragraph,
+        ));
+        totalHeight += lineHeight;
+        continue;
+      }
+
+      final run = activeShaper(paragraph, ttfFont.data);
+      final glyphs = run.glyphs;
+
+      List<ShapedGlyph> currentLine = [];
+      double currentWidth = 0.0;
+
+      for (var i = 0; i < glyphs.length; i++) {
+        final glyph = glyphs[i];
+        final glyphWidth = glyph.xAdvance * fontScale;
+
+        if (currentWidth + glyphWidth > constraints.maxWidth &&
+            currentLine.isNotEmpty) {
+          var breakIndex = -1;
+          for (var j = currentLine.length - 1; j >= 0; j--) {
+            final lineGlyph = currentLine[j];
+            if (lineGlyph.cluster < paragraph.length) {
+              final char = paragraph[lineGlyph.cluster];
+              if (_isBreakOpportunity(char)) {
+                breakIndex = j;
+                break;
+              }
+            }
+          }
+
+          if (breakIndex != -1) {
+            final lineGlyphs = currentLine.sublist(0, breakIndex + 1);
+            _positionedLines!.add(_PositionedLine(
+              glyphs: lineGlyphs,
+              yOffset: totalHeight,
+              originalText: paragraph,
+            ));
+            totalHeight += lineHeight;
+
+            double lineW = 0.0;
+            for (final lg in lineGlyphs) {
+              lineW += lg.xAdvance * fontScale;
+            }
+            if (lineW > maxLineWidth) {
+              maxLineWidth = lineW;
+            }
+
+            final remaining = currentLine.sublist(breakIndex + 1);
+            currentLine = List.from(remaining);
+            currentWidth = 0.0;
+            for (final rg in currentLine) {
+              currentWidth += rg.xAdvance * fontScale;
+            }
+          } else {
+            _positionedLines!.add(_PositionedLine(
+              glyphs: currentLine,
+              yOffset: totalHeight,
+              originalText: paragraph,
+            ));
+            totalHeight += lineHeight;
+
+            if (currentWidth > maxLineWidth) {
+              maxLineWidth = currentWidth;
+            }
+
+            currentLine = [];
+            currentWidth = 0.0;
+          }
+        }
+
+        currentLine.add(glyph);
+        currentWidth += glyphWidth;
+      }
+
+      if (currentLine.isNotEmpty) {
+        _positionedLines!.add(_PositionedLine(
+          glyphs: currentLine,
+          yOffset: totalHeight,
+          originalText: paragraph,
+        ));
+        totalHeight += lineHeight;
+
+        if (currentWidth > maxLineWidth) {
+          maxLineWidth = currentWidth;
+        }
+      }
     }
-
-    final fontScale = fontSize / font.getFont(context).unitsPerEm;
-    final width = totalAdvance * fontScale;
-    final height =
-        (font.getFont(context).ascent - font.getFont(context).descent) *
-        fontSize;
 
     box = PdfRect(
       0,
       0,
-      constraints.constrainWidth(width),
-      constraints.constrainHeight(height),
+      constraints.constrainWidth(maxLineWidth),
+      constraints.constrainHeight(totalHeight),
     );
   }
 
@@ -84,7 +181,7 @@ class HarfBuzzText extends Widget {
   void paint(Context context) {
     super.paint(context);
 
-    if (_shapedGlyphs == null || _shapedGlyphs!.isEmpty) {
+    if (_positionedLines == null || _positionedLines!.isEmpty) {
       return;
     }
 
@@ -93,17 +190,35 @@ class HarfBuzzText extends Widget {
 
     context.canvas.setFillColor(paintColor);
 
-    // Draw the shaped glyphs
-    // The baseline y-coordinate is box.bottom + descent * fontSize
-    final baselineY = box!.bottom - pdfFont.descent * fontSize;
+    final startBaselineY = box!.top - pdfFont.ascent * fontSize;
 
-    context.canvas.drawShapedGlyphs(
-      pdfFont,
-      fontSize,
-      _shapedGlyphs!,
-      text,
-      box!.left,
-      baselineY,
-    );
+    for (final line in _positionedLines!) {
+      if (line.glyphs.isEmpty) {
+        continue;
+      }
+
+      final baselineY = startBaselineY - line.yOffset;
+
+      context.canvas.drawShapedGlyphs(
+        pdfFont,
+        fontSize,
+        line.glyphs,
+        line.originalText,
+        box!.left,
+        baselineY,
+      );
+    }
   }
+}
+
+class _PositionedLine {
+  _PositionedLine({
+    required this.glyphs,
+    required this.yOffset,
+    required this.originalText,
+  });
+
+  final List<ShapedGlyph> glyphs;
+  final double yOffset;
+  final String originalText;
 }
